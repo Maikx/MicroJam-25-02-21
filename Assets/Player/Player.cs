@@ -4,32 +4,40 @@ using UnityEngine;
 
 public class Player : MonoBehaviour
 {
+    Loader loader;
     private CharacterController cC;
+    private Vector3 velocity;
+    private Transform fT;
+    private Transform hT;
     private Transform cT;
 
-    public float visualRotation;
-    public float speed;
+    [Header("Settings")]
+    public float mouseSensitivity = 100f;
+    public float visualRotation = 20f;
+    public float speed = 12f;
     public float gravity = -9.81f;
     public float jumpHeight = 3f;
-    public float jumpLimit;
 
-    public Transform feetCheck;
-    public Transform handsCheck;
+    [Header("CheckDistance")]
     public float groundDistance = 0.4f;
     public float wallDistance = 1f;
+
+    [Header("LayerMasks")]
     public LayerMask groundMask;
     public LayerMask outBoundsMask;
     public LayerMask wallMask;
 
-    Vector3 velocity;
-    bool isGrounded;
-    bool isHugging;
-    [HideInInspector] public bool isOutBounds = false;
+    [HideInInspector] public bool isGrounded;
+    [HideInInspector] public bool isHugging;
+    [HideInInspector] public bool isOutBounds;
 
     private void Start()
     {
         cT = GameObject.Find("Main Camera").GetComponent<Transform>();
         cC = GetComponent<CharacterController>();
+        fT = GameObject.Find("GroundCheck").GetComponent<Transform>();
+        hT = GameObject.Find("WallCheck").GetComponent<Transform>();
+        loader = GameObject.Find("SceneManager").GetComponent<Loader>();
     }
 
     void Update()
@@ -39,6 +47,7 @@ public class Player : MonoBehaviour
         Jump();
         CheckFeet();
         RotateVisual();
+        LoseCondition();
     }
 
     /// <summary>
@@ -57,9 +66,10 @@ public class Player : MonoBehaviour
     /// </summary>
     public void RotateVisual()
     {
-        if(isHugging && cT.localEulerAngles.x != visualRotation)
+        if (isHugging && cT.localEulerAngles.x != visualRotation)
         {
-            cT.Rotate(visualRotation, cT.rotation.y, cT.rotation.z);
+            cT.localEulerAngles = new Vector3(visualRotation, cT.localEulerAngles.y, cT.localEulerAngles.z);
+            //perchè nella build non funziona?? ;(
         }
     }
 
@@ -68,13 +78,13 @@ public class Player : MonoBehaviour
     /// </summary>
     public void CheckFeet()
     {
-        isGrounded = Physics.CheckSphere(feetCheck.position, groundDistance
+        isGrounded = Physics.CheckSphere(fT.position, groundDistance
             , groundMask);
 
-        isHugging = Physics.CheckSphere(handsCheck.position, wallDistance
+        isHugging = Physics.CheckSphere(hT.position, wallDistance
             , wallMask);
 
-        isOutBounds = Physics.CheckSphere(feetCheck.position, groundDistance
+        isOutBounds = Physics.CheckSphere(fT.position, groundDistance
             , outBoundsMask);
     }
 
@@ -93,24 +103,19 @@ public class Player : MonoBehaviour
     }
 
     /// <summary>
-    /// This is a simple jump system & rewards/removes the players jumps when touches a wall
+    /// This is a simple jump system
     /// </summary>
     public void Jump()
     {
-        if(Input.GetButtonDown("Jump") && isGrounded)
+        if(Input.GetButtonDown("Jump") && isGrounded || Input.GetButtonDown("Jump") && isHugging)
         {
             velocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity);
         }
+    }
 
-        if (Input.GetButtonDown("Jump") && isHugging && jumpLimit >= 0)
-        {
-            velocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity);
-            jumpLimit--;
-        }
-
-        if(isHugging)
-        {
-            jumpLimit++;
-        }
+    public void LoseCondition()
+    {
+        if (isOutBounds)
+            loader.ReloadScene();
     }
 }
